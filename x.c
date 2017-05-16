@@ -1533,23 +1533,69 @@ kpress(XEvent *ev)
 		}
 	}
 
-	/* 2. custom keys from config.h */
-	if ((customkey = kmap(ksym, e->state))) {
-		ttysend(customkey, strlen(customkey));
-		return;
-	}
+    // Current termstate
+    if(ctermstate == S_VISUAL || ctermstate == S_NORMAL) {
+        if(ctermstate == S_VISUAL) {
+            sel.mode = SEL_READY;
+            sel.type = SEL_REGULAR;
+        }
 
-	/* 3. composed string from input method */
-	if (len == 0)
-		return;
-	if (len == 1 && e->state & Mod1Mask) {
-		if (IS_SET(MODE_8BIT)) {
-			if (*buf < 0177) {
-				c = *buf | 0x80;
-				len = utf8encode(c, buf);
-			}
-		} else {
-			buf[1] = buf[0];
+        switch (ksym) {
+            case XK_h:
+                moveCursor(-1, 0, (S_VISUAL == ctermstate));
+            break;
+            case XK_j:
+                moveCursor(0, 1, (S_VISUAL == ctermstate));
+            break;
+            case XK_k:
+                moveCursor(0, -1, (S_VISUAL == ctermstate));
+            break;
+            case XK_l:
+                moveCursor(1, 0, (S_VISUAL == ctermstate));
+            break;
+            case XK_v:
+                if(ctermstate == S_NORMAL) {
+                    enterVisualmode();
+                }
+            break;
+            case XK_y:
+                // TODO: kolla upp vf tid bör anges
+                selcopy(0);
+                selclear_(NULL);
+                enterNormalmode();
+            break;
+            case XK_Escape:
+                enterInsertmode();
+                return;
+            break;
+        }
+
+        if(ctermstate == S_VISUAL) {
+            sel.ob.x = term.c.x;
+            sel.ob.y = term.c.y;
+            tsetdirt(sel.nb.y, sel.ne.y);
+            selnormalize();
+        }
+        return;
+    }
+
+    /* 2. custom keys from config.h */
+    if ((customkey = kmap(ksym, e->state))) {
+        ttysend(customkey, strlen(customkey));
+        return;
+    }
+
+    /* 3. composed string from input method */
+    if (len == 0)
+        return;
+    if (len == 1 && e->state & Mod1Mask) {
+        if (IS_SET(MODE_8BIT)) {
+            if (*buf < 0177) {
+                c = *buf | 0x80;
+                len = utf8encode(c, buf);
+            }
+        } else {
+            buf[1] = buf[0];
 			buf[0] = '\033';
 			len = 2;
 		}

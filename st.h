@@ -270,3 +270,17 @@ extern uint forceselmod;
 extern uint selmasks[];
 extern size_t selmaskslen;
 extern char ascii_printable[];
+
+
+enum TermState {
+    S_INSERT,
+    S_NORMAL,
+    S_VISUAL,
+    S_SEARCH
+};
+
+extern enum TermState ctermstate;
+extern void enterVisualmode();
+extern void enterNormalmode();
+extern void enterInsertmode();
+extern void moveCursor(int, int, int);

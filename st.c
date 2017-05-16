@@ -167,7 +167,6 @@ static void tdeleteline(int);
 static void tinsertblank(int);
 static void tinsertblankline(int);
 static int tlinelen(int);
-static void tmoveto(int, int);
 static void tmoveato(int, int);
 static void tnewline(int);
 static void tputtab(int);
@@ -204,6 +203,11 @@ static ssize_t xwrite(int, const char *, size_t);
 static void *xrealloc(void *, size_t);
 
 /* Globals */
+
+
+// Current term state
+enum TermState ctermstate = S_INSERT;
+
 TermWindow win;
 Term term;
 Selection sel;
@@ -2006,6 +2010,45 @@ iso14755(const Arg *arg)
 		return;
 
 	ttysend(uc, utf8encode(utf32, uc));
+}
+
+void enterInsertmode() {
+	tcursor(CURSOR_LOAD);
+    selclear();
+    ctermstate = S_INSERT;
+}
+
+void enterNormalmode(const Arg *arg)
+{
+	tcursor(CURSOR_SAVE);
+    printf("Normal mode");
+    ctermstate = S_NORMAL;
+    tdump();
+}
+
+void enterVisualmode() {
+    printf("Visual mode\n");
+
+    // Clear old selection
+    selclear();
+    ctermstate = S_VISUAL;
+
+    /* Clear previous selection, logically and visually. */
+    sel.mode = SEL_READY;
+    sel.type = SEL_REGULAR;
+    sel.oe.x = sel.ob.x = term.c.x;
+    sel.oe.y = sel.ob.y = term.c.y;
+    sel.snap = 0;
+}
+
+void moveCursor(int x, int y, int selection) {
+    tmoveto(term.c.x+x, term.c.y+y);
+    if(selection) {
+        sel.ob.x = term.c.x;
+        sel.ob.y = term.c.y;
+        selnormalize();
+        tsetdirt(sel.nb.y, sel.ne.y);
+    }
 }
 
 void
